@@ -49,7 +49,7 @@ final class RemoteAnisetteProvider: AnisetteProvider {
         let localUserIdentifier = value(["X-Apple-I-MD-LU"])
         let deviceSerialNumber = value(["X-Apple-I-SRL-NO"])
         let deviceUniqueIdentifier = value(["X-Mme-Device-Id", "X-Apple-I-Device-UID"])
-        let deviceDescription = value(["X-Mme-Client-Info"])
+        let deviceDescription = value(["X-MMe-Client-Info", "X-Mme-Client-Info", "X-MMe-Client-Info-Checksum"])
         let timeZone = value(["X-Apple-I-TimeZone"])
         let locale = value(["X-Apple-Locale", "X-Apple-I-Locale"])
 

@@ -30,8 +30,8 @@ final class AppSession: ObservableObject {
     @Published var signingError: String?
     @Published var signedIPAURL: URL?
 
-    @Published var anisetteBaseURL: String = "https://ani.sidestore.io"
-    @Published var clientInfo: String = GrandSlamClient.defaultClientInfo
+    @Published var anisetteBaseURL: String = "https://new.ani.sidestore.io"
+    @Published var clientInfo: String = ""
 
     private var pendingPassword: String = ""
     private var grandSlam: GrandSlamClient?

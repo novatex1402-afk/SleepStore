@@ -47,7 +47,7 @@ struct SignInView: View {
                             Text("Client Info")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
-                            TextField("X-Mme-Client-Info", text: $session.clientInfo)
+                            TextField("Empty uses the server value", text: $session.clientInfo)
                                 .autocapitalization(.none)
                                 .disableAutocorrection(true)
                         }
