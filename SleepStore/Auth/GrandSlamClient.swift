@@ -80,10 +80,12 @@ final class GrandSlamClient {
         }
 
         let identityToken = makeIdentityToken()
+        let grandSlamToken = Data(identityManagementToken.utf8).base64EncodedString()
         let account = AppleAccount(
             identifier: appleIdentifier,
             accountDirectoryServicesIdentifier: accountDirectoryServicesIdentifier,
             identityToken: identityToken,
+            grandSlamToken: grandSlamToken,
             fullName: decrypted["fn"] as? String ?? decrypted["acname"] as? String
         )
         return .success(account)

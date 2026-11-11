@@ -16,6 +16,11 @@ final class AppSession: ObservableObject {
     @Published var errorMessage: String?
     @Published var account: AppleAccount?
 
+    @Published var isProvisioning: Bool = false
+    @Published var provisioningError: String?
+    @Published var team: DeveloperTeam?
+    @Published var certificate: SigningCertificate?
+
     let anisetteBaseURL: String = "https://ani.sidestore.io"
 
     private var pendingPassword: String = ""
@@ -79,12 +84,46 @@ final class AppSession: ObservableObject {
         }
     }
 
+    func fetchCertificate() async {
+        guard let account = account else {
+            provisioningError = "Sign in with your Apple ID first."
+            return
+        }
+
+        provisioningError = nil
+        isProvisioning = true
+        defer { isProvisioning = false }
+
+        let anisette = RemoteAnisetteProvider(baseURL: anisetteBaseURL)
+        let client = DeveloperServicesClient(account: account, anisetteProvider: anisette)
+
+        do {
+            let teams = try await client.fetchTeams()
+            guard let selectedTeam = teams.first else {
+                provisioningError = DeveloperServicesError.noTeamsFound.readableMessage
+                return
+            }
+            self.team = selectedTeam
+            let obtained = try await client.obtainCertificate(teamId: selectedTeam.id)
+            self.certificate = obtained
+        } catch {
+            if let developerError = error as? DeveloperServicesError {
+                provisioningError = developerError.readableMessage
+            } else {
+                provisioningError = error.localizedDescription
+            }
+        }
+    }
+
     func signOut() {
         account = nil
         pendingPassword = ""
         grandSlam = nil
         appleIdentifier = ""
         errorMessage = nil
+        team = nil
+        certificate = nil
+        provisioningError = nil
         stage = .signIn
     }
 

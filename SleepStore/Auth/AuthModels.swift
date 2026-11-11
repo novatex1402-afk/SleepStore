@@ -4,6 +4,7 @@ struct AppleAccount: Equatable {
     let identifier: String
     let accountDirectoryServicesIdentifier: String
     let identityToken: String
+    let grandSlamToken: String
     let fullName: String?
 }
 

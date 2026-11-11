@@ -17,14 +17,46 @@ struct AccountView: View {
                 }
 
                 Section {
-                    HStack {
-                        Image(systemName: "checkmark.seal.fill")
-                            .foregroundColor(.green)
-                        Text("Apple authentication successful")
-                            .font(.subheadline)
+                    if let team = session.team {
+                        InfoRow(title: "Team", value: team.name)
                     }
+                    if let certificate = session.certificate {
+                        InfoRow(title: "Certificate", value: certificate.serialNumber.isEmpty ? "Issued" : certificate.serialNumber)
+                        HStack {
+                            Image(systemName: "checkmark.seal.fill")
+                                .foregroundColor(.green)
+                            Text("Seven day certificate ready")
+                                .font(.subheadline)
+                        }
+                    } else {
+                        Button {
+                            Task {
+                                await session.fetchCertificate()
+                            }
+                        } label: {
+                            HStack {
+                                Spacer()
+                                if session.isProvisioning {
+                                    ProgressView()
+                                } else {
+                                    Text("Fetch Signing Certificate")
+                                        .fontWeight(.semibold)
+                                }
+                                Spacer()
+                            }
+                        }
+                        .disabled(session.isProvisioning)
+                    }
+
+                    if let provisioningError = session.provisioningError {
+                        Text(provisioningError)
+                            .font(.footnote)
+                            .foregroundColor(.red)
+                    }
+                } header: {
+                    Text("Signing Certificate")
                 } footer: {
-                    Text("Next: fetch the free development certificate and provisioning profile, then sign an IPA on device.")
+                    Text("Requests the free seven day development certificate from Apple for this account.")
                 }
 
                 Section {
