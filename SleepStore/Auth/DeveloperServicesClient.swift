@@ -65,6 +65,26 @@ final class DeveloperServicesClient {
         )
     }
 
+    func registerDevice(teamId: String, deviceIdentifier: String, name: String) async throws -> String {
+        let body: [String: Any] = [
+            "teamId": teamId,
+            "deviceNumber": deviceIdentifier,
+            "name": name
+        ]
+        do {
+            let response = try await perform(action: "ios/addDevice.action", body: body)
+            if let device = response["device"] as? [String: Any], let identifier = device["deviceId"] as? String {
+                return identifier
+            }
+            return ""
+        } catch DeveloperServicesError.apiError(let code, let message) {
+            if message.lowercased().contains("already") || code == 35 {
+                return ""
+            }
+            throw DeveloperServicesError.deviceRegistrationFailed(message: message)
+        }
+    }
+
     func listDevelopmentCertificates(teamId: String) async throws -> [SigningCertificate] {
         let response = try await perform(action: "ios/listAllDevelopmentCerts.action", body: ["teamId": teamId])
         guard let certificates = response["certificates"] as? [[String: Any]] else {

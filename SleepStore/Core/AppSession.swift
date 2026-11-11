@@ -21,6 +21,10 @@ final class AppSession: ObservableObject {
     @Published var team: DeveloperTeam?
     @Published var certificate: SigningCertificate?
 
+    @Published var deviceIdentifier: String = ""
+    @Published var isRegisteringDevice: Bool = false
+    @Published var deviceRegistered: Bool = false
+
     let anisetteBaseURL: String = "https://ani.sidestore.io"
 
     private var pendingPassword: String = ""
@@ -85,7 +89,7 @@ final class AppSession: ObservableObject {
     }
 
     func fetchCertificate() async {
-        guard let account = account else {
+        guard let client = makeDeveloperServicesClient() else {
             provisioningError = "Sign in with your Apple ID first."
             return
         }
@@ -94,25 +98,69 @@ final class AppSession: ObservableObject {
         isProvisioning = true
         defer { isProvisioning = false }
 
-        let anisette = RemoteAnisetteProvider(baseURL: anisetteBaseURL)
-        let client = DeveloperServicesClient(account: account, anisetteProvider: anisette)
-
         do {
-            let teams = try await client.fetchTeams()
-            guard let selectedTeam = teams.first else {
-                provisioningError = DeveloperServicesError.noTeamsFound.readableMessage
-                return
-            }
-            self.team = selectedTeam
+            let selectedTeam = try await resolveTeam(using: client)
             let obtained = try await client.obtainCertificate(teamId: selectedTeam.id)
             self.certificate = obtained
         } catch {
-            if let developerError = error as? DeveloperServicesError {
-                provisioningError = developerError.readableMessage
-            } else {
-                provisioningError = error.localizedDescription
-            }
+            provisioningError = describeProvisioning(error)
         }
+    }
+
+    func registerDevice() async {
+        guard let client = makeDeveloperServicesClient() else {
+            provisioningError = "Sign in with your Apple ID first."
+            return
+        }
+
+        let trimmed = deviceIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 24 else {
+            provisioningError = "Enter a valid device UDID."
+            return
+        }
+
+        provisioningError = nil
+        isRegisteringDevice = true
+        defer { isRegisteringDevice = false }
+
+        do {
+            let selectedTeam = try await resolveTeam(using: client)
+            _ = try await client.registerDevice(
+                teamId: selectedTeam.id,
+                deviceIdentifier: trimmed,
+                name: "SleepStore Device"
+            )
+            self.deviceRegistered = true
+        } catch {
+            provisioningError = describeProvisioning(error)
+        }
+    }
+
+    private func makeDeveloperServicesClient() -> DeveloperServicesClient? {
+        guard let account = account else {
+            return nil
+        }
+        let anisette = RemoteAnisetteProvider(baseURL: anisetteBaseURL)
+        return DeveloperServicesClient(account: account, anisetteProvider: anisette)
+    }
+
+    private func resolveTeam(using client: DeveloperServicesClient) async throws -> DeveloperTeam {
+        if let existing = team {
+            return existing
+        }
+        let teams = try await client.fetchTeams()
+        guard let selectedTeam = teams.first else {
+            throw DeveloperServicesError.noTeamsFound
+        }
+        self.team = selectedTeam
+        return selectedTeam
+    }
+
+    private func describeProvisioning(_ error: Error) -> String {
+        if let developerError = error as? DeveloperServicesError {
+            return developerError.readableMessage
+        }
+        return error.localizedDescription
     }
 
     func signOut() {
@@ -124,6 +172,8 @@ final class AppSession: ObservableObject {
         team = nil
         certificate = nil
         provisioningError = nil
+        deviceIdentifier = ""
+        deviceRegistered = false
         stage = .signIn
     }
 

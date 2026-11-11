@@ -17,6 +17,43 @@ struct AccountView: View {
                 }
 
                 Section {
+                    if session.deviceRegistered {
+                        HStack {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                            Text("Device registered")
+                                .font(.subheadline)
+                        }
+                    } else {
+                        TextField("Device UDID", text: $session.deviceIdentifier)
+                            .autocapitalization(.none)
+                            .disableAutocorrection(true)
+
+                        Button {
+                            Task {
+                                await session.registerDevice()
+                            }
+                        } label: {
+                            HStack {
+                                Spacer()
+                                if session.isRegisteringDevice {
+                                    ProgressView()
+                                } else {
+                                    Text("Register Device")
+                                        .fontWeight(.semibold)
+                                }
+                                Spacer()
+                            }
+                        }
+                        .disabled(session.isRegisteringDevice || session.deviceIdentifier.count < 24)
+                    }
+                } header: {
+                    Text("Device")
+                } footer: {
+                    Text("Find your UDID in Settings, General, About, or from a trusted computer. The device must be registered before a profile can be issued.")
+                }
+
+                Section {
                     if let team = session.team {
                         InfoRow(title: "Team", value: team.name)
                     }
