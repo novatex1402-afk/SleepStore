@@ -2,9 +2,12 @@ import SwiftUI
 
 @main
 struct SleepStoreApp: App {
+    @StateObject private var session = AppSession()
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView()
+                .environmentObject(session)
         }
     }
 }
