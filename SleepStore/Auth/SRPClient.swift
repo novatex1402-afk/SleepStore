@@ -64,16 +64,19 @@ final class SRPClient {
             innerHash = Data(innerHash.hexEncodedString().utf8)
         }
 
-        let derivedKey = CryptoUtilities.pbkdf2SHA256(
+        let derivedPassword = CryptoUtilities.pbkdf2SHA256(
             password: innerHash,
             salt: salt,
             iterations: iterations,
             keyLength: 32
         )
-        if derivedKey.isEmpty {
+        if derivedPassword.isEmpty {
             return nil
         }
-        let privateKeyX = BigUInt(derivedKey)
+
+        let innerPasswordHash = CryptoUtilities.sha256(Data([0x3A]) + derivedPassword)
+        let privateKeyData = CryptoUtilities.sha256(salt + innerPasswordHash)
+        let privateKeyX = BigUInt(privateKeyData)
 
         let generatorToX = generator.power(privateKeyX, modulus: primeModulus)
         let base = (serverPublic + primeModulus - (multiplier * generatorToX) % primeModulus) % primeModulus
