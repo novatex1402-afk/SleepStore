@@ -1,8 +1,11 @@
 import Foundation
 
 final class GrandSlamClient {
+    static let defaultClientInfo = "<Windows;6.2(0,0);9200> <com.apple.AuthKit/1 (com.apple.iTunes/12.12.4.1)>"
+
     private let anisetteProvider: AnisetteProvider
     private let session: URLSession
+    private let clientInfo: String
 
     private let serviceURL = URL(string: "https://gsa.apple.com/grandslam/GsService2")!
     private let validateURL = URL(string: "https://gsa.apple.com/grandslam/GsService2/validate")!
@@ -12,8 +15,9 @@ final class GrandSlamClient {
     private var accountDirectoryServicesIdentifier: String = ""
     private var identityManagementToken: String = ""
 
-    init(anisetteProvider: AnisetteProvider, session: URLSession = .shared) {
+    init(anisetteProvider: AnisetteProvider, clientInfo: String = GrandSlamClient.defaultClientInfo, session: URLSession = .shared) {
         self.anisetteProvider = anisetteProvider
+        self.clientInfo = clientInfo.isEmpty ? GrandSlamClient.defaultClientInfo : clientInfo
         self.session = session
     }
 
@@ -165,7 +169,7 @@ final class GrandSlamClient {
         request.httpBody = encoded
         request.setValue("text/x-xml-plist", forHTTPHeaderField: "Content-Type")
         request.setValue("*/*", forHTTPHeaderField: "Accept")
-        request.setValue(anisette.deviceDescription, forHTTPHeaderField: "X-MMe-Client-Info")
+        request.setValue(clientInfo, forHTTPHeaderField: "X-Mme-Client-Info")
         request.setValue("akd/1.0 CFNetwork/1404.0.5 Darwin/22.3.0", forHTTPHeaderField: "User-Agent")
 
         let (data, response) = try await session.data(for: request)
@@ -199,6 +203,7 @@ final class GrandSlamClient {
             "X-Apple-I-MD-LU": anisette.localUserIdentifier,
             "X-Apple-I-SRL-NO": anisette.deviceSerialNumber,
             "X-Mme-Device-Id": anisette.deviceUniqueIdentifier,
+            "X-Mme-Client-Info": clientInfo,
             "bootstrap": true,
             "icscrec": true,
             "pbe": false,

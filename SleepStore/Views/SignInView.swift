@@ -33,6 +33,30 @@ struct SignInView: View {
                 }
 
                 Section {
+                    DisclosureGroup("Advanced") {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Anisette Server")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            TextField("Anisette server URL", text: $session.anisetteBaseURL)
+                                .keyboardType(.URL)
+                                .autocapitalization(.none)
+                                .disableAutocorrection(true)
+                        }
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Client Info")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            TextField("X-Mme-Client-Info", text: $session.clientInfo)
+                                .autocapitalization(.none)
+                                .disableAutocorrection(true)
+                        }
+                    }
+                } footer: {
+                    Text("If sign in fails with a 503 from Apple, try a different anisette server or client info string.")
+                }
+
+                Section {
                     Button {
                         Task {
                             await session.signIn(appleIdentifier: appleIdentifier, password: password)

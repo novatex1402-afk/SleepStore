@@ -30,7 +30,8 @@ final class AppSession: ObservableObject {
     @Published var signingError: String?
     @Published var signedIPAURL: URL?
 
-    let anisetteBaseURL: String = "https://ani.sidestore.io"
+    @Published var anisetteBaseURL: String = "https://ani.sidestore.io"
+    @Published var clientInfo: String = GrandSlamClient.defaultClientInfo
 
     private var pendingPassword: String = ""
     private var grandSlam: GrandSlamClient?
@@ -48,7 +49,7 @@ final class AppSession: ObservableObject {
         self.pendingPassword = password
 
         let anisette = RemoteAnisetteProvider(baseURL: anisetteBaseURL)
-        let client = GrandSlamClient(anisetteProvider: anisette)
+        let client = GrandSlamClient(anisetteProvider: anisette, clientInfo: clientInfo)
         self.grandSlam = client
 
         do {
