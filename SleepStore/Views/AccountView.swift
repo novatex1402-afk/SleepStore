@@ -65,6 +65,14 @@ struct AccountView: View {
                             Text("Seven day certificate ready")
                                 .font(.subheadline)
                         }
+                        NavigationLink {
+                            SignView()
+                        } label: {
+                            HStack {
+                                Image(systemName: "signature")
+                                Text("Sign an IPA")
+                            }
+                        }
                     } else {
                         Button {
                             Task {

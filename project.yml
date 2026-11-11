@@ -13,6 +13,9 @@ packages:
   BigInt:
     url: https://github.com/attaswift/BigInt
     from: "5.3.0"
+  OpenSSL:
+    url: https://github.com/krzyzanowskim/OpenSSL
+    from: "3.3.2000"
 targets:
   SleepStore:
     type: application
@@ -22,11 +25,22 @@ targets:
       - path: SleepStore
     dependencies:
       - package: BigInt
+      - package: OpenSSL
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.nxteam.sleepstore.test
         PRODUCT_NAME: SleepStore
         TARGETED_DEVICE_FAMILY: "1,2"
+        SWIFT_OBJC_BRIDGING_HEADER: SleepStore/SleepStore-Bridging-Header.h
+        CLANG_CXX_LANGUAGE_STANDARD: "c++17"
+        CLANG_CXX_LIBRARY: "libc++"
+        GCC_C_LANGUAGE_STANDARD: gnu11
+        HEADER_SEARCH_PATHS:
+          - "$(SRCROOT)/SleepStore/zsign"
+          - "$(SRCROOT)/SleepStore/zsign/common"
+          - "$(SRCROOT)/SleepStore/zsign/third-party/minizip"
+          - "$(SRCROOT)/SleepStore/zsign/third-party/zlib"
+        GCC_WARN_INHIBIT_ALL_WARNINGS: YES
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: SleepStore
         INFOPLIST_KEY_UILaunchScreen_Generation: YES

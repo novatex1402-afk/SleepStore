@@ -85,6 +85,57 @@ final class DeveloperServicesClient {
         }
     }
 
+    func ensureAppIdentifier(teamId: String, bundleIdentifier: String, name: String) async throws -> String {
+        let existing = try await perform(action: "ios/listAppIds.action", body: ["teamId": teamId])
+        if let appIds = existing["appIds"] as? [[String: Any]] {
+            for entry in appIds {
+                if let identifier = entry["identifier"] as? String, identifier == bundleIdentifier,
+                   let appIdId = entry["appIdId"] as? String {
+                    return appIdId
+                }
+            }
+        }
+
+        let body: [String: Any] = [
+            "teamId": teamId,
+            "identifier": bundleIdentifier,
+            "name": name
+        ]
+        let created = try await perform(action: "ios/addAppId.action", body: body)
+        if let appId = created["appId"] as? [String: Any], let appIdId = appId["appIdId"] as? String {
+            return appIdId
+        }
+        throw DeveloperServicesError.profileDownloadFailed(message: "Could not register an App ID for \(bundleIdentifier).")
+    }
+
+    func downloadProvisioningProfile(teamId: String, appIdId: String) async throws -> ProvisioningProfile {
+        let body: [String: Any] = [
+            "teamId": teamId,
+            "appIdId": appIdId
+        ]
+        let response = try await perform(action: "ios/downloadTeamProvisioningProfile.action", body: body)
+        guard let profile = response["provisioningProfile"] as? [String: Any] else {
+            throw DeveloperServicesError.profileDownloadFailed(message: "Apple did not return a provisioning profile.")
+        }
+
+        let name = profile["name"] as? String ?? "SleepStore Profile"
+        var data = Data()
+        for key in ["encodedProfile", "provisioningProfile"] {
+            if let raw = profile[key] as? Data {
+                data = raw
+                break
+            }
+            if let string = profile[key] as? String, let decoded = Data(base64Encoded: string) {
+                data = decoded
+                break
+            }
+        }
+        if data.isEmpty {
+            throw DeveloperServicesError.profileDownloadFailed(message: "The provisioning profile was empty.")
+        }
+        return ProvisioningProfile(name: name, data: data)
+    }
+
     func listDevelopmentCertificates(teamId: String) async throws -> [SigningCertificate] {
         let response = try await perform(action: "ios/listAllDevelopmentCerts.action", body: ["teamId": teamId])
         guard let certificates = response["certificates"] as? [[String: Any]] else {

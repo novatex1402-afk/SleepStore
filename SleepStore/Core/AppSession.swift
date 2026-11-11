@@ -25,6 +25,11 @@ final class AppSession: ObservableObject {
     @Published var isRegisteringDevice: Bool = false
     @Published var deviceRegistered: Bool = false
 
+    @Published var isSigning: Bool = false
+    @Published var signingStatus: String = ""
+    @Published var signingError: String?
+    @Published var signedIPAURL: URL?
+
     let anisetteBaseURL: String = "https://ani.sidestore.io"
 
     private var pendingPassword: String = ""
@@ -136,6 +141,72 @@ final class AppSession: ObservableObject {
         }
     }
 
+    func signIPA(at pickedURL: URL) async {
+        guard let certificate = certificate, !certificate.privateKeyPEM.isEmpty else {
+            signingError = "Fetch a signing certificate first."
+            return
+        }
+        guard let client = makeDeveloperServicesClient() else {
+            signingError = "Sign in with your Apple ID first."
+            return
+        }
+
+        signingError = nil
+        signedIPAURL = nil
+        isSigning = true
+        signingStatus = "Preparing"
+        defer { isSigning = false }
+
+        let needsScopedAccess = pickedURL.startAccessingSecurityScopedResource()
+        defer {
+            if needsScopedAccess {
+                pickedURL.stopAccessingSecurityScopedResource()
+            }
+        }
+
+        do {
+            let workingCopy = FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString, isDirectory: true)
+                .appendingPathComponent(pickedURL.lastPathComponent)
+            try FileManager.default.createDirectory(
+                at: workingCopy.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+            try FileManager.default.copyItem(at: pickedURL, to: workingCopy)
+
+            signingStatus = "Reading bundle identifier"
+            let bundleIdentifier = try SigningService.bundleIdentifier(ofIPA: workingCopy)
+
+            let selectedTeam = try await resolveTeam(using: client)
+
+            signingStatus = "Registering App ID"
+            let appIdId = try await client.ensureAppIdentifier(
+                teamId: selectedTeam.id,
+                bundleIdentifier: bundleIdentifier,
+                name: "SleepStore \(bundleIdentifier)"
+            )
+
+            signingStatus = "Downloading provisioning profile"
+            let profile = try await client.downloadProvisioningProfile(teamId: selectedTeam.id, appIdId: appIdId)
+
+            signingStatus = "Signing"
+            let signedURL = try SigningService.sign(
+                ipaURL: workingCopy,
+                certificate: certificate,
+                profile: profile
+            )
+
+            signingStatus = "Done"
+            signedIPAURL = signedURL
+        } catch let error as SigningServiceError {
+            signingError = error.readableMessage
+        } catch let error as DeveloperServicesError {
+            signingError = error.readableMessage
+        } catch {
+            signingError = error.localizedDescription
+        }
+    }
+
     private func makeDeveloperServicesClient() -> DeveloperServicesClient? {
         guard let account = account else {
             return nil
@@ -174,6 +245,10 @@ final class AppSession: ObservableObject {
         provisioningError = nil
         deviceIdentifier = ""
         deviceRegistered = false
+        isSigning = false
+        signingStatus = ""
+        signingError = nil
+        signedIPAURL = nil
         stage = .signIn
     }
 
