@@ -1,0 +1,51 @@
+workflows:
+  ios-unsigned:
+    name: SleepStore Unsigned IPA
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      xcode: latest
+      vars:
+        XCODE_PROJECT: "SleepStore.xcodeproj"
+        XCODE_SCHEME: "SleepStore"
+    triggering:
+      events:
+        - push
+    scripts:
+      - name: Install XcodeGen
+        script: brew install xcodegen
+      - name: Generate project
+        script: xcodegen generate
+      - name: Resolve Swift packages
+        script: |
+          xcodebuild \
+            -project "$XCODE_PROJECT" \
+            -scheme "$XCODE_SCHEME" \
+            -resolvePackageDependencies \
+            -clonedSourcePackagesDirPath SourcePackages
+      - name: Build unsigned app
+        script: |
+          xcodebuild \
+            -project "$XCODE_PROJECT" \
+            -scheme "$XCODE_SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            -clonedSourcePackagesDirPath SourcePackages \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+      - name: Package IPA
+        script: |
+          APP_PATH="build/Build/Products/Release-iphoneos/SleepStore.app"
+          test -d "$APP_PATH"
+          rm -rf Payload
+          mkdir Payload
+          cp -R "$APP_PATH" Payload/
+          zip -qry SleepStore.ipa Payload
+          ls -lh SleepStore.ipa
+    artifacts:
+      - SleepStore.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - build/**/*.log
