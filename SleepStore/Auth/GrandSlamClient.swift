@@ -36,7 +36,8 @@ final class GrandSlamClient {
             let iterations = integerValue(initResponse["i"]),
             let selectedProtocol = initResponse["sp"] as? String
         else {
-            throw GrandSlamError.malformedServerResponse
+            let keys = initResponse.keys.sorted().joined(separator: ", ")
+            throw GrandSlamError.malformedServerResponse("init keys [\(keys)]")
         }
 
         let isDoubleHashed = selectedProtocol == "s2k_fo"
@@ -168,17 +169,22 @@ final class GrandSlamClient {
         request.setValue("akd/1.0 CFNetwork/1404.0.5 Darwin/22.3.0", forHTTPHeaderField: "User-Agent")
 
         let (data, response) = try await session.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-            throw GrandSlamError.malformedServerResponse
+        let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
+
+        guard let plist = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil) as? [String: Any] else {
+            let snippet = String(data: data.prefix(240), encoding: .utf8) ?? "non-text body (\(data.count) bytes)"
+            throw GrandSlamError.malformedServerResponse("HTTP \(statusCode): \(snippet)")
         }
 
-        guard
-            let plist = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil) as? [String: Any],
-            let responseBody = plist["Response"] as? [String: Any]
-        else {
-            throw GrandSlamError.malformedServerResponse
+        if let responseBody = plist["Response"] as? [String: Any] {
+            return responseBody
         }
-        return responseBody
+        if plist["Status"] != nil || plist["spd"] != nil || plist["sp"] != nil {
+            return plist
+        }
+
+        let keys = plist.keys.sorted().joined(separator: ", ")
+        throw GrandSlamError.malformedServerResponse("HTTP \(statusCode): keys [\(keys)]")
     }
 
     private func clientProvidedData(appleIdentifier: String, anisette: AnisetteData) -> [String: Any] {

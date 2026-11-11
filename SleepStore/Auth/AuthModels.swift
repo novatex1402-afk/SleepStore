@@ -16,7 +16,7 @@ enum AuthenticationResult {
 enum GrandSlamError: Error {
     case invalidAnisetteResponse
     case anisetteRequestFailed(Int)
-    case malformedServerResponse
+    case malformedServerResponse(String)
     case authenticationRejected(code: Int, message: String)
     case missingSessionData
     case sessionKeyDerivationFailed
@@ -29,8 +29,8 @@ enum GrandSlamError: Error {
             return "Could not read anisette data from the server."
         case .anisetteRequestFailed(let status):
             return "Anisette server returned status \(status)."
-        case .malformedServerResponse:
-            return "Apple returned an unexpected response."
+        case .malformedServerResponse(let detail):
+            return "Apple returned an unexpected response. \(detail)"
         case .authenticationRejected(let code, let message):
             return "Sign in failed (\(code)): \(message)"
         case .missingSessionData:
