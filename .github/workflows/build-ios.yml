@@ -7,15 +7,25 @@ on:
 jobs:
   build:
     runs-on: macos-15
+    timeout-minutes: 120
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Install XcodeGen
-        run: brew install xcodegen
+        run: brew install xcodegen 2>&1 | tee build.log
 
       - name: Generate project
-        run: xcodegen generate 2>&1 | tee build.log
+        run: xcodegen generate 2>&1 | tee -a build.log
+
+      - name: Resolve Swift packages
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project SleepStore.xcodeproj \
+            -scheme SleepStore \
+            -resolvePackageDependencies \
+            -clonedSourcePackagesDirPath SourcePackages 2>&1 | tee -a build.log
 
       - name: Build unsigned app
         run: |
@@ -26,6 +36,7 @@ jobs:
             -configuration Release \
             -sdk iphoneos \
             -derivedDataPath build \
+            -clonedSourcePackagesDirPath SourcePackages \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
@@ -43,6 +54,7 @@ jobs:
           ls -lh SleepStore.ipa
 
       - name: Upload IPA
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: SleepStore-unsigned-ipa
@@ -50,20 +62,23 @@ jobs:
           if-no-files-found: error
 
       - name: Write error log
-        if: failure()
+        if: always()
         run: |
           touch build.log
           {
             echo "=== Errors ==="
             grep -nE "error:|fatal error|\*\* BUILD FAILED \*\*|Command .* failed" build.log || true
             echo
-            echo "=== Last 200 lines ==="
-            tail -n 200 build.log
+            echo "=== Last 300 lines ==="
+            tail -n 300 build.log
           } > error.txt
 
-      - name: Upload error log
-        if: failure()
+      - name: Upload build log
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: SleepStore-build-error
-          path: error.txt
+          name: SleepStore-build-log
+          path: |
+            build.log
+            error.txt
+          if-no-files-found: warn
