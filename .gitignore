@@ -8,3 +8,4 @@ error.txt
 build.log
 .DS_Store
 xcuserdata/
+*.apk
